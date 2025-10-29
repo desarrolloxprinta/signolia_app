@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -23,7 +24,7 @@ const AndroidNotificationChannel kSignoliaChannel = AndroidNotificationChannel(
 // Handler BG (top-level)
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // await Firebase.initializeApp(); // si lo usas en tu proyecto
+  await Firebase.initializeApp();
 }
 
 class NotificationService {
@@ -48,21 +49,41 @@ class NotificationService {
       announcement: true,
     );
 
+    await _messaging.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
     // Init locales con icono propio
     const AndroidInitializationSettings androidInit =
         AndroidInitializationSettings('@drawable/ic_stat_signolia');
-    const InitializationSettings initSettings =
-        InitializationSettings(android: androidInit);
+    const DarwinInitializationSettings iosInit = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    const InitializationSettings initSettings = InitializationSettings(
+      android: androidInit,
+      iOS: iosInit,
+    );
 
     await _local.initialize(
       initSettings,
       onDidReceiveNotificationResponse: _onNotificationTap,
     );
 
+    await _local
+        .resolvePlatformSpecificImplementation<
+          DarwinFlutterLocalNotificationsPlugin
+        >()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
+
     // Crear canal
     await _local
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(kSignoliaChannel);
 
     // Topics
@@ -127,23 +148,29 @@ class NotificationService {
     final n = message.notification;
     if (n == null) return;
 
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'signolia_channel',
-      'Signolia Notifications',
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'signolia_channel',
+          'Signolia Notifications',
+          channelDescription: 'Contenido nuevo en Signolia',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+        );
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      threadIdentifier: 'signolia_channel',
     );
     const NotificationDetails details = NotificationDetails(
       android: androidDetails,
+      iOS: iosDetails,
     );
 
     final payload = '${message.data['type']}|${message.data['post_id']}';
 
-    await _local.show(
-      n.hashCode,
-      n.title,
-      n.body,
-      details,
-      payload: payload,
-    );
+    await _local.show(n.hashCode, n.title, n.body, details, payload: payload);
   }
 
   // Tap en locales (app ya abierta)
@@ -222,12 +249,14 @@ class NotificationService {
           } else {
             nav.navigatorKey.currentState!.push(
               MaterialPageRoute(
-                builder: (_) => OfertaDetailScreen.fromWp(post: {
-                  'id': int.tryParse(postId) ?? 0,
-                  'title': {'rendered': 'Oferta'},
-                  'link': '',
-                  'meta': {},
-                }),
+                builder: (_) => OfertaDetailScreen.fromWp(
+                  post: {
+                    'id': int.tryParse(postId) ?? 0,
+                    'title': {'rendered': 'Oferta'},
+                    'link': '',
+                    'meta': {},
+                  },
+                ),
               ),
             );
           }
@@ -236,9 +265,8 @@ class NotificationService {
         case 'podcast':
           nav.navigatorKey.currentState!.push(
             MaterialPageRoute(
-              builder: (_) => PodcastDetailScreen(
-                id: int.tryParse(postId) ?? 0,
-              ),
+              builder: (_) =>
+                  PodcastDetailScreen(id: int.tryParse(postId) ?? 0),
             ),
           );
           break;
