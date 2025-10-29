@@ -7,7 +7,21 @@ use_modular_headers!
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
 # Ruta correcta para proyectos Flutter recientes (usa flutter_ios_podfile_setup)
-require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root = File.expand_path(File.join('..', '..', '..', 'flutter')))
+flutter_root = ENV['FLUTTER_ROOT']
+unless flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('Flutter', 'Generated.xcconfig'), __dir__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. Ejecuta 'flutter build ios' o 'flutter pub get' para regenerarlo."
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    flutter_root = matches[1].strip if matches
+  end
+end
+
+raise 'No fue posible determinar FLUTTER_ROOT.' unless flutter_root
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
 
 flutter_ios_podfile_setup
 
