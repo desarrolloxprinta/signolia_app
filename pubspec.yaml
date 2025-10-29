@@ -1,0 +1,66 @@
+name: signolia_app
+description: "Signolia es el primer podcast profesional COLABORATIVO para el sector de la rotulación y la comunicación visual en punto de venta."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  sensors_plus: ^3.0.0
+  html: ^0.15.4  # o la última versión estable
+  cupertino_icons: ^1.0.8
+  http: ^1.5.0
+  flutter_secure_storage: ^9.2.4
+  url_launcher: ^6.3.2
+  webview_flutter: ^4.13.0
+  intl: any
+  flutter_widget_from_html: ^0.17.1
+  cached_network_image: ^3.3.1
+  shimmer: ^3.0.0
+  flutter_html: ^3.0.0
+  flutter_localizations:
+    sdk: flutter
+  firebase_core: ^4.2.0
+  firebase_messaging: ^16.0.3
+  flutter_local_notifications: ^17.2.1
+  video_player: ^2.9.1
+  
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
+
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/Icon-512.png" # ← Ruta a tu icono principal (512x512 mínimo)
+  min_sdk_android: 21 # recomendado
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/ # Si tienes imágenes, descoméntalo
+    - assets/logo.png
+    - assets/images/story/
+    - assets/images/story/egg.png
+    - assets/images/story/egg_glow.png
+    - assets/images/story/egg_proo.png 
+    - assets/images/story/egg_retro.jpg 
+    - assets/images/story/pro.png
+    - assets/images/story/podcast.png
+    - assets/images/story/empleo.png
+    - assets/images/story/ope.jpeg
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600

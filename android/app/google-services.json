@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "758642806980",
+    "project_id": "signolia",
+    "storage_bucket": "signolia.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:758642806980:android:7e312e1bae95181c287991",
+        "android_client_info": {
+          "package_name": "com.signolia.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "758642806980-d3j2eu4rp0c45k8uiibhos2tr8d30co2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdLFootBHHy3j9tffstx4u9x_WRd3O-SU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "758642806980-d3j2eu4rp0c45k8uiibhos2tr8d30co2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
