@@ -1,0 +1,30 @@
+# Podfile — Configuración de iOS para Flutter y Firebase (iOS 15+)
+platform :ios, '15.0'
+
+use_frameworks!
+use_modular_headers!
+
+# Evita conflictos con versiones antiguas de CocoaPods
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+# RUTA DE FLUTTER (CodeMagic la detecta automáticamente)
+flutter_application_path = '../'
+load File.join(flutter_application_path, '.ios', 'Flutter', 'podhelper.rb')
+
+target 'Runner' do
+  use_frameworks!
+  use_modular_headers!
+
+  flutter_install_all_ios_pods(flutter_application_path)
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+
+    # ⚙️ Asegura compatibilidad con iOS 15+
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+    end
+  end
+end
