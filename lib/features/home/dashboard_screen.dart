@@ -31,7 +31,7 @@ Map<String, dynamic> _ofertaAdapterToWpMap(final dynamic a) {
   // `a` es tu _OfertaAdapter (ajusta nombres si alguno difiere)
   return {
     'title': {'rendered': (a.titulo ?? a.title ?? '').toString()},
-    // permalink público de Signolia → el que contiene el formulario (elementor/jetengine)
+    // permalink pÃºblico de Signolia â†’ el que contiene el formulario (elementor/jetengine)
     'link': (a.link ?? a.linkPublico ?? '').toString(),
 
     'excerpt': {'rendered': (a.excerptHtml ?? a.excerpt ?? '').toString()},
@@ -69,7 +69,7 @@ class BrandImages {
   // Eggs
   static const eggTap = 'assets/images/story/egg.png';
   static const eggShake = 'assets/images/story/egg_retro.jpg';
-  static const eggOrder = 'assets/images/story/egg_proo.png'; // <- ¡dos "o"!
+  static const eggOrder = 'assets/images/story/egg_proo.png'; // <- Â¡dos "o"!
   static const eggGlow = 'assets/images/story/egg_glow.png';
   static const brainrot = 'assets/images/story/kelvin-brainrot.mp4';
 }
@@ -131,26 +131,30 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
   int _eggTapCount = 0;
   DateTime? _eggFirstTapAt;
 
-  // Shake (solo activo cuando la ruta está visible)
+  // Shake (solo activo cuando la ruta estÃ¡ visible)
   StreamSubscription<AccelerometerEvent>? _accelSub;
   DateTime _lastShakeAt = DateTime.fromMillisecondsSinceEpoch(0);
   double _lastX = 0, _lastY = 0, _lastZ = 0;
 
-  // Alternar “modo legacy agrupado” (7 taps en el título)
+  // Alternar â€œmodo legacy agrupadoâ€ (7 taps en el tÃ­tulo)
   bool _orderAlt = false;
 
-  // Datos "¿Sabías que...?"
-  static const List<String> _sabiasQueFacts = [
-    '¿Qué prefieres...\n -Perder un pedazo del labio de abajo -Perder un pedazo de nariz\n -La muerte instantánea de un niño de unos 3 o 2 años guatemalteco y quedar con buenos labios y una nariz perfecta',
-    '¿Qué prefieres...\n -Ganar un millón de euros y perder mitad del pene o de la vagina de forma que ninguna operación sea posible, te queda con mal olor también, mueres así!\n -Ganar 60 millones de euros pero todos los lunes por 12 años a las 8:00 am tienes que llamar a Colombia, te presentan un perfil de varias personas al azar y tu decides cual desaparecen.\n -Ganar un millón de euros, pero solo puedes usar ese dinero en "yibuti ciudad" se transfiere el dinero a esa zona no se puede sacar mediante ningún motivo, forma o traspaso.',
-    '¿Qué prefieres…\n— Un día sin internet\n— O un día sin recibir afecto',
+  // Datos "Â¿QuÃ© prefieres...?"
+  static const List<String> _wouldYouRatherPrompts = [
+    '¿Qué prefieres?\n Reflexiona y conversa tu decisión con la persona que tienes a un lado \n -Perder un pedazo del labio de abajo -Perder un pedazo de nariz\n -La muerte instantánea de un niño de unos 3 o 2 años guatemalteco y quedar con buenos labios y una nariz perfecta',
+    '¿Qué prefieres?\n Reflexiona y conversa tu decisión con la persona que tienes a un lado\n -Ganar un millón de euros y perder mitad del pene o de la vagina de forma que ninguna operación sea posible, te queda con mal olor también, mueres así\n -Ganar 60 millones de euros pero todos los lunes por 12 años a las 8:00 am tienes que llamar a Colombia, te presentan un perfil de varias personas al azar y tu decides cual desaparecen.\n -Ganar un millón de euros, pero sólo puedes usar ese dinero en "yibuti ciudad" se transfiere el dinero a esa zona no se puede sacar mediante ningún motivo, forma o traspaso.',
+    '¿Qué prefieres?\n Reflexiona y conversa tu decisión con la persona que tienes a un lado\n -Un año sin besar a nadie y oler mal \n -Perder el tacto por un año y 4 muelas',
+    '¿Qué prefieres?\n Reflexiona y conversa tu decisión con la persona que tienes a un lado\n -Matar un chimpancé una vez cada 3 años y recibir una isla como premio, luego de 2 chimpances eliminados\n -Revivir en el cuerpo de un chimpancé bebe en medio de la selva con todos los conocimientos que tienes actualmente',
+    '¿A quien le ganas en una pelea a puños?\n Reflexiona y conversa tu decisión con la persona que tienes a un lado\n -Un Hombre del pasado (1850 - 1860)\n -Un hombre del futuro (2080 - 2090)',
+    '¿Qué prefieres?\n Reflexiona y conversa tu decisión con la persona que tienes a un lado\n -Tener una cara perfecta pero estar sin piernas los fines de semana y festivos \n -Mejorar un solo aspecto de tu físico que desees pero siempre a las 00:00 te llama una señora de unos 85 años llorando y te cuenta algo triste o terrorífico por 30 años, no puedes colgar, el cuento suele durar unos 45 min',
+    '¿Qué prefieres?\n Reflexiona y conversa tu decisión con la persona que tienes a un lado\n -Una lengua grande  \n -Un brazo 5cm más que el otro\n -Una pierna peluda la otra sin pelo por siempre, no se vale depilar con nada', 
   ];
   final Random _eggRandom = Random();
 
   // Kelvin brainrot video (dos dedos en appbar)
   final Set<int> _appBarPointers = <int>{};
-  Timer? _sabiasHoldTimer;
-  bool _sabiasCooldown = false;
+  Timer? _wouldYouRatherHoldTimer;
+  bool _wouldYouRatherCooldown = false;
   Timer? _brainrotHoldTimer;
 
   @override
@@ -170,7 +174,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
       BrandImages.eggGlow,
     ]) {
       precacheImage(AssetImage(path), context).catchError((e) {
-        debugPrint('❗No se pudo precachear $path: $e');
+        debugPrint('â—No se pudo precachear $path: $e');
       });
     }
 
@@ -184,13 +188,13 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
   void dispose() {
     _stopShakeListener();
     _cancelBrainrotHoldTimer();
-    _cancelSabiasHoldTimer();
+    _cancelWouldYouRatherHoldTimer();
     _appBarPointers.clear();
     routeObserver.unsubscribe(this);
     super.dispose();
   }
 
-  // ----- RouteAware: activar/desactivar shake según visibilidad -----
+  // ----- RouteAware: activar/desactivar shake segÃºn visibilidad -----
   @override
   void didPush() => _startShakeListener();
   @override
@@ -207,14 +211,14 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
     _appBarPointers.add(event.pointer);
     if (_appBarPointers.length == 1) {
       _cancelBrainrotHoldTimer();
-      if (!_sabiasCooldown) {
-        _startSabiasHoldTimer();
+      if (!_wouldYouRatherCooldown) {
+        _startWouldYouRatherHoldTimer();
       }
     } else if (_appBarPointers.length == 2) {
-      _cancelSabiasHoldTimer();
+      _cancelWouldYouRatherHoldTimer();
       _startBrainrotHoldTimer();
     } else {
-      _cancelSabiasHoldTimer();
+      _cancelWouldYouRatherHoldTimer();
       _cancelBrainrotHoldTimer();
     }
   }
@@ -222,21 +226,21 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
   void _onAppBarPointerUp(PointerEvent event) {
     _appBarPointers.remove(event.pointer);
     if (_appBarPointers.isEmpty) {
-      _cancelSabiasHoldTimer();
+      _cancelWouldYouRatherHoldTimer();
       _cancelBrainrotHoldTimer();
-      _sabiasCooldown = false;
+      _wouldYouRatherCooldown = false;
     } else if (_appBarPointers.length == 1) {
       _cancelBrainrotHoldTimer();
-      if (!_sabiasCooldown) {
-        _startSabiasHoldTimer();
+      if (!_wouldYouRatherCooldown) {
+        _startWouldYouRatherHoldTimer();
       }
     } else if (_appBarPointers.length == 2) {
-      _cancelSabiasHoldTimer();
+      _cancelWouldYouRatherHoldTimer();
       if (_brainrotHoldTimer == null) {
         _startBrainrotHoldTimer();
       }
     } else {
-      _cancelSabiasHoldTimer();
+      _cancelWouldYouRatherHoldTimer();
       _cancelBrainrotHoldTimer();
     }
   }
@@ -244,55 +248,50 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
   void _onAppBarPointerCancel(PointerEvent event) {
     _appBarPointers.remove(event.pointer);
     if (_appBarPointers.isEmpty) {
-      _cancelSabiasHoldTimer();
+      _cancelWouldYouRatherHoldTimer();
       _cancelBrainrotHoldTimer();
-      _sabiasCooldown = false;
+      _wouldYouRatherCooldown = false;
     } else if (_appBarPointers.length == 1) {
       _cancelBrainrotHoldTimer();
-      if (!_sabiasCooldown) {
-        _startSabiasHoldTimer();
+      if (!_wouldYouRatherCooldown) {
+        _startWouldYouRatherHoldTimer();
       }
     } else if (_appBarPointers.length == 2) {
-      _cancelSabiasHoldTimer();
+      _cancelWouldYouRatherHoldTimer();
       if (_brainrotHoldTimer == null) {
         _startBrainrotHoldTimer();
       }
     } else {
-      _cancelSabiasHoldTimer();
+      _cancelWouldYouRatherHoldTimer();
       _cancelBrainrotHoldTimer();
     }
   }
 
-  void _startSabiasHoldTimer() {
-    _sabiasHoldTimer ??= Timer(const Duration(seconds: 20), () {
+  void _startWouldYouRatherHoldTimer() {
+    _wouldYouRatherHoldTimer ??= Timer(const Duration(seconds: 20), () {
       if (!mounted) {
-        _cancelSabiasHoldTimer();
+        _cancelWouldYouRatherHoldTimer();
         return;
       }
-      if (_appBarPointers.length == 1 && !_sabiasCooldown) {
-        _sabiasHoldTimer = null;
-        _showSabiasQue();
+      if (_appBarPointers.length == 1 && !_wouldYouRatherCooldown) {
+        _wouldYouRatherHoldTimer = null;
+        _showWouldYouRather();
       } else {
-        _cancelSabiasHoldTimer();
+        _cancelWouldYouRatherHoldTimer();
       }
     });
   }
 
-  void _cancelSabiasHoldTimer() {
-    _sabiasHoldTimer?.cancel();
-    _sabiasHoldTimer = null;
+  void _cancelWouldYouRatherHoldTimer() {
+    _wouldYouRatherHoldTimer?.cancel();
+    _wouldYouRatherHoldTimer = null;
   }
 
-  void _showSabiasQue() {
-    _cancelSabiasHoldTimer();
-    _sabiasCooldown = true;
-    final fact = _sabiasQueFacts[_eggRandom.nextInt(_sabiasQueFacts.length)];
+  void _showWouldYouRather() {
+    _cancelWouldYouRatherHoldTimer();
+    _wouldYouRatherCooldown = true;
     HapticFeedback.mediumImpact();
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: .75),
-      builder: (_) => _SabiasQueDialog(fact: fact),
-    );
+    _openWouldYouRather();
   }
 
   void _startBrainrotHoldTimer() {
@@ -339,7 +338,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
       pathToOpen = asset;
     } catch (e) {
       debugPrint(
-        '⚠️ Asset no encontrado ($asset). Fallback a ${BrandImages.eggShake}',
+        'âš ï¸ Asset no encontrado ($asset). Fallback a ${BrandImages.eggShake}',
       );
     }
     if (!mounted) return;
@@ -368,16 +367,20 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
   }
 
   void _openWouldYouRather() {
+    final prompt =
+        _wouldYouRatherPrompts[_eggRandom.nextInt(
+          _wouldYouRatherPrompts.length,
+        )];
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: .75),
-      builder: (_) => const _WouldYouRatherEgg(),
+      builder: (_) => _WouldYouRatherEgg(prompt: prompt),
     );
   }
 
   void _startShakeListener() {
     if (_accelSub != null) return;
-    const threshold = 60.0; // cuanto más alto, menos sensible
+    const threshold = 60.0; // cuanto mÃ¡s alto, menos sensible
     const minDelay = Duration(milliseconds: 900);
 
     _accelSub = accelerometerEvents.listen((e) {
@@ -395,7 +398,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
           _openEggChecked(BrandImages.eggShake, forceLandscape: true);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('🐣: ¡Tu equipo de confianza!')),
+              const SnackBar(content: Text('ðŸ£: Â¡Tu equipo de confianza!')),
             );
           }
         }
@@ -448,7 +451,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
             content: Text(
               _orderAlt
                   ? 'Modo agrupado por tipo (legado) activado'
-                  : 'Modo por fecha (meta publicación) activado',
+                  : 'Modo por fecha (meta publicaciÃ³n) activado',
             ),
             duration: const Duration(seconds: 15),
           ),
@@ -465,12 +468,12 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
     if (v == null) return null;
     if (v is DateTime) return v;
     if (v is int) {
-      // epoch: si parece ms, respétalo; si no, segundos
-      final isMs = v > 100000000000; // heurística
+      // epoch: si parece ms, respÃ©talo; si no, segundos
+      final isMs = v > 100000000000; // heurÃ­stica
       return DateTime.fromMillisecondsSinceEpoch(isMs ? v : v * 1000);
     }
     if (v is String) {
-      // ¿numérico? => epoch
+      // Â¿numÃ©rico? => epoch
       final numVal = int.tryParse(v);
       if (numVal != null) return _tryParseDate(numVal);
       // si no, intenta ISO
@@ -479,7 +482,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
     return null;
   }
 
-  /// Intenta leer una “fecha de publicación” para ordenar:
+  /// Intenta leer una â€œfecha de publicaciÃ³nâ€ para ordenar:
   /// - evento: meta.fecha (epoch) -> fallback date
   /// - oferta: meta.fecha_inicio_oferta (epoch) -> fallback date
   /// - noticia/podcast: meta.fecha_publicacion (ISO o epoch) -> fallback date
@@ -574,8 +577,8 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
         .replaceAll('&amp;', '&')
         .replaceAll('&#038;', '&')
         .replaceAll('&quot;', '"')
-        .replaceAll('&#8217;', '’')
-        .replaceAll('&#8211;', '–')
+        .replaceAll('&#8217;', 'â€™')
+        .replaceAll('&#8211;', 'â€“')
         .replaceAll('&nbsp;', ' ')
         .trim();
   }
@@ -644,7 +647,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
             : int.tryParse('${item.raw['id']}') ?? -1;
         if (id <= -1) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('ID de podcast inválido')),
+            const SnackBar(content: Text('ID de podcast invÃ¡lido')),
           );
           return;
         }
@@ -659,7 +662,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
             : int.tryParse('${item.raw['id']}') ?? -1;
         if (id <= -1) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('ID de noticia inválido')),
+            const SnackBar(content: Text('ID de noticia invÃ¡lido')),
           );
           return;
         }
@@ -721,13 +724,6 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: _onTapLogoEgg, // 20 taps
-            onLongPress: () {
-              if (_appBarPointers.length <= 1 &&
-                  (_sabiasHoldTimer?.isActive ?? false)) {
-                _cancelSabiasHoldTimer();
-                _openWouldYouRather(); // diálogo ¿Qué prefieres?
-              }
-            },
             child: SizedBox(
               height: kToolbarHeight,
               width: double.infinity,
@@ -749,7 +745,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
             onTap: _onTitleTap, // 7 taps para cambiar modo
             behavior: HitTestBehavior.opaque,
             child: Text(
-              'Últimas Novedades',
+              'Ãšltimas Novedades',
               style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
           ),
@@ -762,7 +758,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
               }
               final items = snap.data ?? [];
               if (items.isEmpty) {
-                return const _EmptyState(message: 'No hay novedades todavía.');
+                return const _EmptyState(message: 'No hay novedades todavÃ­a.');
               }
               return SizedBox(
                 height: 300,
@@ -1301,14 +1297,16 @@ class _EggVideoScreenState extends State<_EggVideoScreen> {
   }
 }
 
-class _SabiasQueDialog extends StatelessWidget {
-  const _SabiasQueDialog({required this.fact});
+// ====================== Nuevo egg: Que prefieres...? (seguro) ======================
+class _WouldYouRatherEgg extends StatelessWidget {
+  const _WouldYouRatherEgg({required this.prompt});
 
-  final String fact;
+  final String prompt;
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+
     return Dialog(
       backgroundColor: Colors.black,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -1323,19 +1321,26 @@ class _SabiasQueDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '¿Sabías que...?',
+              'Que prefieres...?',
               style: (t.titleLarge ?? const TextStyle()).copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              fact,
-              textAlign: TextAlign.center,
-              style: (t.bodyLarge ?? const TextStyle()).copyWith(
-                color: Colors.white,
-                height: 1.35,
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: .06),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                prompt,
+                style: (t.bodyLarge ?? const TextStyle()).copyWith(
+                  color: Colors.white,
+                  height: 1.35,
+                ),
               ),
             ),
             const SizedBox(height: 18),
@@ -1351,80 +1356,6 @@ class _SabiasQueDialog extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ====================== Nuevo egg: ¿Qué prefieres…? (seguro) ======================
-class _WouldYouRatherEgg extends StatelessWidget {
-  const _WouldYouRatherEgg();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-
-    const questions = [
-      // 👇 Ejemplos seguros (sustituye por otros no dañinos si quieres)
-      '¿Qué prefieres...\n -Perder un pedazo del labio de abajo -Perder un pedazo de nariz\n -La muerte instantánea de un niño de unos 3 o 2 años guatemalteco y quedar con buenos labios y una nariz perfecta',
-      '¿Qué prefieres...\n -Ganar un millón de euros y perder mitad del pene o de la vagina de forma que ninguna operación sea posible, te queda con mal olor también, mueres así!\n -Ganar 60 millones de euros pero todos los lunes por 12 años a las 8:00 am tienes que llamar a Colombia, te presentan un perfil de varias personas al azar y tu decides cual desaparecen.\n -Ganar un millón de euros, pero solo puedes usar ese dinero en "yibuti ciudad" se transfiere el dinero a esa zona no se puede sacar mediante ningún motivo, forma o traspaso.',
-      '¿Qué prefieres…\n— Un día sin internet\n— O un día sin recibir afecto',
-    ];
-
-    return Dialog(
-      backgroundColor: Colors.black,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.black,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: .25)),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              Text(
-                '¿Qué prefieres…?',
-                style: (t.titleLarge ?? const TextStyle()).copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 14),
-              for (final q in questions) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  margin: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: .06),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    q,
-                    style: (t.bodyLarge ?? const TextStyle()).copyWith(
-                      color: Colors.white,
-                      height: 1.35,
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: () => Navigator.of(context).maybePop(),
-                icon: const Icon(Icons.close, color: Colors.white),
-                label: const Text(
-                  'Cerrar',
-                  style: TextStyle(color: Colors.white),
-                ),
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: .08),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
