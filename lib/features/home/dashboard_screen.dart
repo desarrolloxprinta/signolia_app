@@ -264,7 +264,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
   }
 
   void _startSabiasHoldTimer() {
-    _sabiasHoldTimer ??= Timer(const Duration(seconds: 15), () {
+    _sabiasHoldTimer ??= Timer(const Duration(seconds: 20), () {
       if (!mounted) {
         _cancelSabiasHoldTimer();
         return;
