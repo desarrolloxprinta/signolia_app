@@ -148,6 +148,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
     '¿A quien le ganas en una pelea a puños?\n Reflexiona y conversa tu decisión con la persona que tienes a un lado\n -Un Hombre del pasado (1850 - 1860)\n -Un hombre del futuro (2080 - 2090)',
     '¿Qué prefieres?\n Reflexiona y conversa tu decisión con la persona que tienes a un lado\n -Tener una cara perfecta pero estar sin piernas los fines de semana y festivos \n -Mejorar un solo aspecto de tu físico que desees pero siempre a las 00:00 te llama una señora de unos 85 años llorando y te cuenta algo triste o terrorífico por 30 años, no puedes colgar, el cuento suele durar unos 45 min',
     '¿Qué prefieres?\n Reflexiona y conversa tu decisión con la persona que tienes a un lado\n -Una lengua grande  \n -Un brazo 5cm más que el otro\n -Una pierna peluda la otra sin pelo por siempre, no se vale depilar con nada', 
+    'Posees buena espiritualidad, buena suerte, hoy tienes mucha energía positiva',  
   ];
   final Random _eggRandom = Random();
 

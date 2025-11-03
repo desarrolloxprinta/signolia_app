@@ -1,11 +1,14 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:signolia_app/firebase_options.dart';
 
-/// Punto unico para inicializar Firebase antes de arrancar la app.
+/// Punto único para inicializar Firebase antes de arrancar la app.
 class SignoliaFirebase {
   /// Debe llamarse en `main()` antes de `runApp`.
   static Future<void> init() async {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
     // Garantiza que FCM arranque y pueda gestionar pushes en background.
     final messaging = FirebaseMessaging.instance;
