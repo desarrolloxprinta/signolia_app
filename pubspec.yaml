@@ -1,7 +1,7 @@
 name: signolia_app
 description: "Signolia es el primer podcast profesional COLABORATIVO para el sector de la rotulación y la comunicación visual en punto de venta."
 publish_to: 'none'
-version: 1.0.0+2
+version: 1.1.0+1
 
 environment:
   sdk: ^3.9.2
