@@ -31,7 +31,7 @@ Map<String, dynamic> _ofertaAdapterToWpMap(final dynamic a) {
   // `a` es tu _OfertaAdapter (ajusta nombres si alguno difiere)
   return {
     'title': {'rendered': (a.titulo ?? a.title ?? '').toString()},
-    // permalink pÃºblico de Signolia â†’ el que contiene el formulario (elementor/jetengine)
+    // permalink público de Signolia → el que contiene el formulario (elementor/jetengine)
     'link': (a.link ?? a.linkPublico ?? '').toString(),
 
     'excerpt': {'rendered': (a.excerptHtml ?? a.excerpt ?? '').toString()},
@@ -69,7 +69,7 @@ class BrandImages {
   // Eggs
   static const eggTap = 'assets/images/story/egg.png';
   static const eggShake = 'assets/images/story/egg_retro.jpg';
-  static const eggOrder = 'assets/images/story/egg_proo.png'; // <- Â¡dos "o"!
+  static const eggOrder = 'assets/images/story/egg_proo.png'; // <- ¡dos "o"!
   static const eggGlow = 'assets/images/story/egg_glow.png';
   static const brainrot = 'assets/images/story/kelvin-brainrot.mp4';
 }
@@ -131,15 +131,15 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
   int _eggTapCount = 0;
   DateTime? _eggFirstTapAt;
 
-  // Shake (solo activo cuando la ruta estÃ¡ visible)
+  // Shake (solo activo cuando la ruta está visible)
   StreamSubscription<AccelerometerEvent>? _accelSub;
   DateTime _lastShakeAt = DateTime.fromMillisecondsSinceEpoch(0);
   double _lastX = 0, _lastY = 0, _lastZ = 0;
 
-  // Alternar â€œmodo legacy agrupadoâ€ (7 taps en el tÃ­tulo)
+  // Alternar "modo legacy agrupado" (7 taps en el título)
   bool _orderAlt = false;
 
-  // Datos "Â¿QuÃ© prefieres...?"
+  // Datos "¿Qué prefieres...?"
   static const List<String> _wouldYouRatherPrompts = [
     '¿Qué prefieres?\n Reflexiona y conversa tu decisión con la persona que tienes a un lado \n -Perder un pedazo del labio de abajo -Perder un pedazo de nariz\n -La muerte instantánea de un niño de unos 3 o 2 años guatemalteco y quedar con buenos labios y una nariz perfecta',
     '¿Qué prefieres?\n Reflexiona y conversa tu decisión con la persona que tienes a un lado\n -Ganar un millón de euros y perder mitad del pene o de la vagina de forma que ninguna operación sea posible, te queda con mal olor también, mueres así\n -Ganar 60 millones de euros pero todos los lunes por 12 años a las 8:00 am tienes que llamar a Colombia, te presentan un perfil de varias personas al azar y tu decides cual desaparecen.\n -Ganar un millón de euros, pero sólo puedes usar ese dinero en "yibuti ciudad" se transfiere el dinero a esa zona no se puede sacar mediante ningún motivo, forma o traspaso.',
@@ -175,7 +175,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
       BrandImages.eggGlow,
     ]) {
       precacheImage(AssetImage(path), context).catchError((e) {
-        debugPrint('â—No se pudo precachear $path: $e');
+        debugPrint('❗No se pudo precachear $path: $e');
       });
     }
 
@@ -195,7 +195,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
     super.dispose();
   }
 
-  // ----- RouteAware: activar/desactivar shake segÃºn visibilidad -----
+  // ----- RouteAware: activar/desactivar shake según visibilidad -----
   @override
   void didPush() => _startShakeListener();
   @override
@@ -339,7 +339,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
       pathToOpen = asset;
     } catch (e) {
       debugPrint(
-        'âš ï¸ Asset no encontrado ($asset). Fallback a ${BrandImages.eggShake}',
+        '⚠️ Asset no encontrado ($asset). Fallback a ${BrandImages.eggShake}',
       );
     }
     if (!mounted) return;
@@ -381,7 +381,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
 
   void _startShakeListener() {
     if (_accelSub != null) return;
-    const threshold = 60.0; // cuanto mÃ¡s alto, menos sensible
+    const threshold = 60.0; // cuanto más alto, menos sensible
     const minDelay = Duration(milliseconds: 900);
 
     _accelSub = accelerometerEvents.listen((e) {
@@ -399,7 +399,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
           _openEggChecked(BrandImages.eggShake, forceLandscape: true);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('ðŸ£: Â¡Tu equipo de confianza!')),
+              const SnackBar(content: Text('🐣: ¡Tu equipo de confianza!')),
             );
           }
         }
@@ -452,7 +452,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
             content: Text(
               _orderAlt
                   ? 'Modo agrupado por tipo (legado) activado'
-                  : 'Modo por fecha (meta publicaciÃ³n) activado',
+                  : 'Modo por fecha (meta publicación) activado',
             ),
             duration: const Duration(seconds: 15),
           ),
@@ -469,12 +469,12 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
     if (v == null) return null;
     if (v is DateTime) return v;
     if (v is int) {
-      // epoch: si parece ms, respÃ©talo; si no, segundos
-      final isMs = v > 100000000000; // heurÃ­stica
+      // epoch: si parece ms, respétalo; si no, segundos
+      final isMs = v > 100000000000; // heurística
       return DateTime.fromMillisecondsSinceEpoch(isMs ? v : v * 1000);
     }
     if (v is String) {
-      // Â¿numÃ©rico? => epoch
+      // ¿numérico? => epoch
       final numVal = int.tryParse(v);
       if (numVal != null) return _tryParseDate(numVal);
       // si no, intenta ISO
@@ -483,7 +483,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
     return null;
   }
 
-  /// Intenta leer una â€œfecha de publicaciÃ³nâ€ para ordenar:
+  /// Intenta leer una "fecha de publicación" para ordenar:
   /// - evento: meta.fecha (epoch) -> fallback date
   /// - oferta: meta.fecha_inicio_oferta (epoch) -> fallback date
   /// - noticia/podcast: meta.fecha_publicacion (ISO o epoch) -> fallback date
@@ -578,8 +578,8 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
         .replaceAll('&amp;', '&')
         .replaceAll('&#038;', '&')
         .replaceAll('&quot;', '"')
-        .replaceAll('&#8217;', 'â€™')
-        .replaceAll('&#8211;', 'â€“')
+        .replaceAll('&#8217;', '’')
+        .replaceAll('&#8211;', '–')
         .replaceAll('&nbsp;', ' ')
         .trim();
   }
@@ -648,7 +648,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
             : int.tryParse('${item.raw['id']}') ?? -1;
         if (id <= -1) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('ID de podcast invÃ¡lido')),
+            const SnackBar(content: Text('ID de podcast inválido')),
           );
           return;
         }
@@ -663,7 +663,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
             : int.tryParse('${item.raw['id']}') ?? -1;
         if (id <= -1) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('ID de noticia invÃ¡lido')),
+            const SnackBar(content: Text('ID de noticia inválido')),
           );
           return;
         }
@@ -746,7 +746,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
             onTap: _onTitleTap, // 7 taps para cambiar modo
             behavior: HitTestBehavior.opaque,
             child: Text(
-              'Ãšltimas Novedades',
+              'Últimas Novedades',
               style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
           ),
@@ -759,7 +759,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
               }
               final items = snap.data ?? [];
               if (items.isEmpty) {
-                return const _EmptyState(message: 'No hay novedades todavÃ­a.');
+                return const _EmptyState(message: 'No hay novedades todavía.');
               }
               return SizedBox(
                 height: 300,
