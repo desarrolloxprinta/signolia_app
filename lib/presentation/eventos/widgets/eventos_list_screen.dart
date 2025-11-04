@@ -1,72 +1,14 @@
 // lib/presentation/eventos/widgets/eventos_list_screen.dart
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
-import '../../../core/env.dart';
+import '../../../features/eventos/eventos_repository.dart';
 import 'evento_detail_screen.dart';
 
-
-
 class BrandColors {
-  static const primary   = Color(0xFF347778);
+  static const primary = Color(0xFF347778);
   static const secondary = Color(0xFFEF7F1A);
-  static const text      = Color(0xFF0C0B0B);
-  static const accent    = Color(0xFF347778);
-}
-
-/// === Reemplazo mínimo del servicio original ===
-/// Mantiene la misma firma para no tocar tu lógica.
-class PageData {
-  final List<Map<String, dynamic>> items;
-  final int totalPages;
-  PageData({required this.items, required this.totalPages});
-}
-
-class WpService {
-  Future<PageData> fetchPage(
-    String baseUrl, {
-    required int page,
-    int perPage = 10,
-    bool embed = true,
-  }) async {
-    final hasQuery = baseUrl.contains('?');
-    final params = <String>[
-      if (embed) '_embed=1',
-      'status=publish',          // ✅ solo publicados
-      'per_page=$perPage',
-      'page=$page',
-    ].join('&');
-
-    final url = hasQuery ? '$baseUrl&$params' : '$baseUrl?$params';
-    final res = await http.get(Uri.parse(url));
-
-    // WP envía número de páginas en X-WP-TotalPages (o minúsculas según server)
-    int totalPages = 1;
-    final hdr = res.headers;
-    final tp = hdr['x-wp-totalpages'] ?? hdr['X-WP-TotalPages'] ?? hdr['x-wp-total-pages'];
-    if (tp != null) {
-      final parsed = int.tryParse(tp);
-      if (parsed != null && parsed > 0) totalPages = parsed;
-    }
-
-    if (res.statusCode == 200) {
-      final body = json.decode(res.body);
-      final list = (body is List) ? body : <dynamic>[];
-      final items = list
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
-      return PageData(items: items, totalPages: totalPages);
-    }
-
-    // WP suele devolver 400/404 cuando la página no existe (fin de lista)
-    if (res.statusCode == 400 || res.statusCode == 404) {
-      return PageData(items: const [], totalPages: totalPages);
-    }
-
-    throw Exception('HTTP ${res.statusCode}');
-  }
+  static const text = Color(0xFF0C0B0B);
+  static const accent = Color(0xFF347778);
 }
 
 class EventosListScreen extends StatefulWidget {
@@ -77,127 +19,167 @@ class EventosListScreen extends StatefulWidget {
 }
 
 class _EventosListScreenState extends State<EventosListScreen> {
-  final _svc   = WpService();
-  final _items = <Map<String, dynamic>>[];
-
+  final EventosRepository _repository = EventosRepository();
+  final List<Map<String, dynamic>> _items = <Map<String, dynamic>>[];
   int _page = 1;
   int _totalPages = 1;
   bool _loading = false;
-  bool _error   = false;
+  bool _error = false;
+  bool _bootstrapped = false;
 
   @override
   void initState() {
     super.initState();
-    _load(refresh: true);
+    _primeFromCache();
   }
 
-  Future<void> _load({bool refresh = false}) async {
-    if (_loading) return;
+  Future<void> _primeFromCache() async {
+    final cached = await _repository.getCachedFirstPage();
+    if (!mounted) return;
+
+    if (cached != null && cached.items.isNotEmpty) {
+      setState(() {
+        _items
+          ..clear()
+          ..addAll(cached.items);
+        _totalPages = cached.totalPages;
+        _page = 2;
+      });
+    }
+
+    _bootstrapped = true;
+    await _load(
+      refresh: true,
+      keepExisting: cached != null && cached.items.isNotEmpty,
+    );
+  }
+
+  Future<void> _load({bool refresh = false, bool keepExisting = false}) async {
+    if (_loading || (!_bootstrapped && !refresh)) return;
     setState(() {
       _loading = true;
       if (refresh) {
         _error = false;
         _page = 1;
-        _items.clear();
+        if (!keepExisting) {
+          _items.clear();
+        }
       }
     });
 
     try {
-      final pageData = await _svc.fetchPage(
-        Env.cptEventos,
-        page: _page,
+      final targetPage = refresh ? 1 : _page;
+      final pageData = await _repository.fetchPage(
+        targetPage,
         perPage: 10,
-        embed: true,
+        forceRefresh: refresh,
       );
+
+      if (refresh) {
+        _items
+          ..clear()
+          ..addAll(pageData.items);
+        _page = 2;
+      } else {
+        _items.addAll(pageData.items);
+        _page++;
+      }
       _totalPages = pageData.totalPages;
-      _items.addAll(pageData.items);
-      _page++;
     } catch (_) {
       _error = true;
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      } else {
+        _loading = false;
+      }
     }
   }
 
-  // ——— Helpers ———
+  Future<void> _onRefresh() async {
+    await _load(refresh: true, keepExisting: true);
+  }
 
-  String _plain(String html) =>
-      html.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+  bool get _canLoadMore => _page <= _totalPages;
+
+  String _plain(String? html) => (html ?? '')
+      .replaceAll(RegExp(r'<[^>]*>'), '')
+      .replaceAll('&nbsp;', ' ')
+      .trim();
 
   String? _image(Map<String, dynamic> item) {
     try {
-      final media = item['_embedded']?['wp:featuredmedia'];
-      if (media is List && media.isNotEmpty) {
-        final src = media[0]?['source_url'];
-        if (src is String && src.isNotEmpty) return src;
+      final embedded = item['_embedded'];
+      if (embedded is Map) {
+        final media = embedded['wp:featuredmedia'];
+        if (media is List && media.isNotEmpty) {
+          final src = media[0]?['source_url'];
+          if (src is String && src.isNotEmpty) return src;
+        }
       }
     } catch (_) {}
     return null;
   }
 
-  /// Lee fecha en epoch (segundos) o ISO8601. Devuelve dd/mm/yyyy o ''.
-  String _fmtDate(dynamic v) {
-    if (v == null) return '';
-    // Epoch en string/num
-    if (v is num) {
-      try {
-        final d = DateTime.fromMillisecondsSinceEpoch(v.toInt() * 1000, isUtc: true).toLocal();
-        return '${d.day}/${d.month}/${d.year}';
-      } catch (_) {}
-    }
-    if (v is String) {
-      // ¿epoch en string?
-      final asInt = int.tryParse(v);
-      if (asInt != null) {
-        try {
-          final d = DateTime.fromMillisecondsSinceEpoch(asInt * 1000, isUtc: true).toLocal();
-          return '${d.day}/${d.month}/${d.year}';
-        } catch (_) {}
-      }
-      // ¿ISO?
-      try {
-        final d = DateTime.parse(v).toLocal();
-        return '${d.day}/${d.month}/${d.year}';
-      } catch (_) {}
-    }
-    return '';
-  }
-
-  /// Construye el rango de fechas 'ini - fin' si procede.
   String _dateRange(Map<String, dynamic> item) {
-    // tus campos: fecha (inicio) y fecha_fin (fin) pueden venir como epoch (string)
-    final ini = _fmtDate(item['fecha'] ?? item['fecha_inicio'] ?? item['date']);
-    final fin = _fmtDate(item['fecha_fin']);
-    if (ini.isNotEmpty && fin.isNotEmpty) return '$ini - $fin';
-    if (ini.isNotEmpty) return ini;
-    if (fin.isNotEmpty) return fin;
-    return '';
+    DateTime? parseTs(dynamic value) {
+      if (value == null) return null;
+      final str = value.toString();
+      if (str.isEmpty) return null;
+      final ts = int.tryParse(str);
+      if (ts == null) return null;
+      return DateTime.fromMillisecondsSinceEpoch(ts * 1000);
+    }
+
+    final meta = item['meta'];
+    final start = parseTs(
+      item['fecha'] ?? (meta is Map ? meta['fecha'] : null),
+    );
+    final end = parseTs(
+      item['fecha_fin'] ?? (meta is Map ? meta['fecha_fin'] : null),
+    );
+
+    String fmt(DateTime date) =>
+        '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+
+    if (start == null && end == null) return '';
+    if (start != null && end != null) {
+      if (start.isAtSameMomentAs(end)) return fmt(start);
+      return '${fmt(start)} - ${fmt(end)}';
+    }
+    return fmt(start ?? end!);
   }
 
   String _ubicacion(Map<String, dynamic> item) {
-    // tus eventos usan 'ubicacion' como string
-    final u = item['ubicacion'];
-    return (u is String) ? u.trim() : '';
+    final meta = item['meta'];
+    final raw =
+        item['ubicacion'] ??
+        (meta is Map ? meta['ubicacion'] : null) ??
+        item['direccion'] ??
+        (meta is Map ? meta['direccion'] : null);
+    return (raw ?? '').toString().trim();
   }
 
   String _excerpt(Map<String, dynamic> item) {
-    // prioriza `descripcion` (campo largo), luego excerpt.rendered, luego content.rendered
-    final raw = (item['descripcion'] ??
-            item['excerpt']?['rendered'] ??
-            item['content']?['rendered'] ??
-            '')
-        .toString();
-    return _plain(raw);
+    final excerpt = item['excerpt'];
+    if (excerpt is Map) {
+      return _plain(excerpt['rendered']?.toString());
+    }
+    final content = item['content'];
+    if (content is Map) {
+      return _plain(content['rendered']?.toString());
+    }
+    final meta = item['meta'];
+    final resumen =
+        (meta is Map ? meta['resumen'] : null) ?? item['descripcion'];
+    return _plain(resumen?.toString());
   }
-
-  bool get _canLoadMore => _page <= _totalPages;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: RefreshIndicator(
-        onRefresh: () => _load(refresh: true),
+        onRefresh: _onRefresh,
         child: _error
             ? ListView(
                 children: [
@@ -236,8 +218,8 @@ class _EventosListScreenState extends State<EventosListScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           child: Center(
                             child: OutlinedButton(
-                              onPressed: _load,
-                              child: const Text('Cargar más'),
+                              onPressed: () => _load(),
+                              child: const Text('Cargar mas'),
                             ),
                           ),
                         );
@@ -246,11 +228,11 @@ class _EventosListScreenState extends State<EventosListScreen> {
                       }
                     }
 
-                    final item   = _items[i];
-                    final title  = _plain(item['title']?['rendered'] ?? '');
-                    final img    = _image(item);
-                    final rango  = _dateRange(item);
-                    final ubic   = _ubicacion(item);
+                    final item = _items[i];
+                    final title = _plain(item['title']?['rendered'] ?? '');
+                    final img = _image(item);
+                    final rango = _dateRange(item);
+                    final ubic = _ubicacion(item);
                     final resume = _excerpt(item);
 
                     return _EventoTile(
@@ -263,7 +245,8 @@ class _EventosListScreenState extends State<EventosListScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => EventoDetailScreen.fromWp(post: item),
+                            builder: (_) =>
+                                EventoDetailScreen.fromWp(post: item),
                           ),
                         );
                       },
@@ -341,7 +324,10 @@ class _EventoTile extends StatelessWidget {
                   children: [
                     // Chip EVENTO
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: BrandColors.primary.withValues(alpha: .10),
                         borderRadius: BorderRadius.circular(999),
@@ -356,28 +342,37 @@ class _EventoTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    // Título
+                    // T??tulo
                     Text(
                       title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: t.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                      style: t.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 6),
 
-                    // Rango de fechas + ubicación en una línea (si existen)
+                    // Rango de fechas + ubicaci??n en una l??nea (si existen)
                     if (dateText.isNotEmpty || location.isNotEmpty) ...[
                       Row(
                         children: [
                           if (dateText.isNotEmpty) ...[
-                            const Icon(Icons.calendar_month_outlined, size: 16, color: Colors.black54),
+                            const Icon(
+                              Icons.calendar_month_outlined,
+                              size: 16,
+                              color: Colors.black54,
+                            ),
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(
                                 dateText,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: t.bodySmall?.copyWith(color: Colors.black87, fontWeight: FontWeight.w600),
+                                style: t.bodySmall?.copyWith(
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ],
@@ -387,14 +382,20 @@ class _EventoTile extends StatelessWidget {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            const Icon(Icons.place_outlined, size: 16, color: Colors.black54),
+                            const Icon(
+                              Icons.place_outlined,
+                              size: 16,
+                              color: Colors.black54,
+                            ),
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(
                                 location,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: t.bodySmall?.copyWith(color: Colors.black87),
+                                style: t.bodySmall?.copyWith(
+                                  color: Colors.black87,
+                                ),
                               ),
                             ),
                           ],
@@ -403,7 +404,7 @@ class _EventoTile extends StatelessWidget {
                       const SizedBox(height: 6),
                     ],
 
-                    // Resumen (2 líneas)
+                    // Resumen (2 l??neas)
                     if (subtitle.isNotEmpty)
                       Text(
                         subtitle,

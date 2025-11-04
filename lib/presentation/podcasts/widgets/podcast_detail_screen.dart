@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../features/podcasts/podcast_service.dart';
+import '../../../features/podcasts/podcast_repository.dart';
 import '../../../features/podcasts/podcast_model.dart';
 // ajusta el import real
 import 'package:signolia_app/widgets/center_logo_app_bar.dart';
@@ -16,17 +16,27 @@ class PodcastDetailScreen extends StatefulWidget {
 }
 
 class _PodcastDetailScreenState extends State<PodcastDetailScreen> {
+  final PodcastRepository _repository = PodcastRepository();
   late Future<PodcastItem> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = PodcastService().fetchPodcast(widget.id);
+    _future = _repository.fetchDetail(widget.id);
+  }
+
+  Future<void> _refresh() async {
+    final future = _repository.fetchDetail(widget.id, forceRefresh: true);
+    setState(() => _future = future);
+    await future;
   }
 
   Future<void> _openUrl(String url) async {
     final uri = Uri.parse(url);
-    final okNative = await launchUrl(uri, mode: LaunchMode.externalNonBrowserApplication);
+    final okNative = await launchUrl(
+      uri,
+      mode: LaunchMode.externalNonBrowserApplication,
+    );
     if (!okNative) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -37,7 +47,7 @@ class _PodcastDetailScreenState extends State<PodcastDetailScreen> {
     final t = Theme.of(context).textTheme;
 
     return Scaffold(
-   appBar: const CenterLogoAppBar(showBack: true),
+      appBar: const CenterLogoAppBar(showBack: true),
       body: FutureBuilder<PodcastItem>(
         future: _future,
         builder: (context, snap) {
@@ -51,114 +61,153 @@ class _PodcastDetailScreenState extends State<PodcastDetailScreen> {
 
           return Stack(
             children: [
-              ListView(
-                padding: const EdgeInsets.only(bottom: 96),
-                children: [
-                  // portada
-                  AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: p.thumbnailUrl == null || p.thumbnailUrl!.isEmpty
-                        ? Container(
-                            color: Colors.black12,
-                            child: const Center(
-                              child: Icon(Icons.podcasts_rounded, size: 56, color: Colors.black38),
-                            ),
-                          )
-                        : Image.network(p.thumbnailUrl!, fit: BoxFit.cover),
-                  ),
-
-                  // título + intro
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                    child: Text(
-                      p.title,
-                      style: t.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+              RefreshIndicator(
+                onRefresh: _refresh,
+                child: ListView(
+                  padding: const EdgeInsets.only(bottom: 96),
+                  children: [
+                    // portada
+                    AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: p.thumbnailUrl == null || p.thumbnailUrl!.isEmpty
+                          ? Container(
+                              color: Colors.black12,
+                              child: const Center(
+                                child: Icon(
+                                  Icons.podcasts_rounded,
+                                  size: 56,
+                                  color: Colors.black38,
+                                ),
+                              ),
+                            )
+                          : Image.network(p.thumbnailUrl!, fit: BoxFit.cover),
                     ),
-                  ),
-                  if (p.sinopsisText.isNotEmpty)
+
+                    // título + intro
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
                       child: Text(
-                        p.sinopsisText,
-                        style: t.bodyMedium?.copyWith(height: 1.5),
+                        p.title,
+                        style: t.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
+                    if (p.sinopsisText.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                        child: Text(
+                          p.sinopsisText,
+                          style: t.bodyMedium?.copyWith(height: 1.5),
+                        ),
+                      ),
 
-                  // metadatos
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.withValues(alpha: .25)),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: [
-                          _MetaRow(label: 'Episodio', value: p.episodeNumber?.toString() ?? '—'),
-                          _MetaRow(label: 'Duración', value: p.durationMinutes != null ? '${p.durationMinutes} min' : '—'),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Invitados
-                  if (p.guests.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-                      child: Text('Invitados', style: t.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Column(
-                        children: p.guests.map((g) => _GuestTile(guest: g, onLinkTap: _openUrl)).toList(),
-                      ),
-                    ),
-                  ],
-
-                  // Segmentos (si los tienes)
-                  if (p.segments.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-                      child: Text('Resumen del capítulo', style: t.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-                    ),
+                    // metadatos
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: p.segments.map((s) {
-                          return ListTile(
-                            dense: true,
-                            leading: const Icon(Icons.bolt_rounded),
-                            title: Text(s.title),
-                            subtitle: s.time == null ? null : Text(s.time!),
-                          );
-                        }).toList(),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.grey.withValues(alpha: .25),
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: [
+                            _MetaRow(
+                              label: 'Episodio',
+                              value: p.episodeNumber?.toString() ?? '—',
+                            ),
+                            _MetaRow(
+                              label: 'Duracion',
+                              value: p.durationMinutes != null
+                                  ? '${p.durationMinutes} min'
+                                  : '—',
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
 
-                  // Enlaces relacionados (si los tienes)
-                  if (p.links.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-                      child: Text('Enlaces', style: t.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Column(
-                        children: p.links.map((l) {
-                          return ListTile(
-                            dense: true,
-                            leading: const Icon(Icons.link_rounded),
-                            title: Text(l.title ?? l.url),
-                            onTap: () => _openUrl(l.url),
-                          );
-                        }).toList(),
+                    // Invitados
+                    if (p.guests.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+                        child: Text(
+                          'Invitados',
+                          style: t.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Column(
+                          children: p.guests
+                              .map(
+                                (g) =>
+                                    _GuestTile(guest: g, onLinkTap: _openUrl),
+                              )
+                              .toList(),
+                        ),
+                      ),
+                    ],
 
-                  const SizedBox(height: 12),
-                ],
+                    // Segmentos (si los tienes)
+                    if (p.segments.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+                        child: Text(
+                          'Resumen del capitulo',
+                          style: t.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          children: p.segments.map((s) {
+                            return ListTile(
+                              dense: true,
+                              leading: const Icon(Icons.bolt_rounded),
+                              title: Text(s.title),
+                              subtitle: s.time == null ? null : Text(s.time!),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
+
+                    // Enlaces relacionados (si los tienes)
+                    if (p.links.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+                        child: Text(
+                          'Enlaces',
+                          style: t.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Column(
+                          children: p.links.map((l) {
+                            return ListTile(
+                              dense: true,
+                              leading: const Icon(Icons.link_rounded),
+                              title: Text(l.title ?? l.url),
+                              onTap: () => _openUrl(l.url),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 12),
+                  ],
+                ),
               ),
 
               // FAB YouTube
@@ -200,8 +249,16 @@ class _MetaRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: Text(label, style: t.bodyMedium?.copyWith(color: Colors.grey.shade700))),
-          Text(value, style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+          Expanded(
+            child: Text(
+              label,
+              style: t.bodyMedium?.copyWith(color: Colors.grey.shade700),
+            ),
+          ),
+          Text(
+            value,
+            style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
         ],
       ),
     );
@@ -221,13 +278,20 @@ class _GuestTile extends StatelessWidget {
       leading: CircleAvatar(
         radius: 24,
         backgroundColor: Colors.black12,
-        backgroundImage: (guest.avatarUrl?.isNotEmpty ?? false) ? NetworkImage(guest.avatarUrl!) : null,
+        backgroundImage: (guest.avatarUrl?.isNotEmpty ?? false)
+            ? NetworkImage(guest.avatarUrl!)
+            : null,
         child: (guest.avatarUrl == null || guest.avatarUrl!.isEmpty)
             ? const Icon(Icons.person_outline_rounded, color: Colors.black45)
             : null,
       ),
-      title: Text(guest.name, style: t.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-      subtitle: (guest.bio?.isNotEmpty ?? false) ? Text(guest.bio!, maxLines: 2, overflow: TextOverflow.ellipsis) : null,
+      title: Text(
+        guest.name,
+        style: t.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+      ),
+      subtitle: (guest.bio?.isNotEmpty ?? false)
+          ? Text(guest.bio!, maxLines: 2, overflow: TextOverflow.ellipsis)
+          : null,
       trailing: Wrap(
         spacing: 8,
         children: [

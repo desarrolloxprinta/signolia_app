@@ -1,4 +1,3 @@
-
 /// Modelo normalizado para que las vistas puedan usar:
 /// - thumbnailUrl
 /// - sinopsisText
@@ -13,12 +12,13 @@ class PodcastItem {
   final Map<String, dynamic> raw;
 
   // Campos base que llegan desde el API de WP
-  final String? excerptHtml;      // excerpt.rendered
-  final String? sinopsisHtml;     // meta['sinopsis'] (HTML)
-  final String? thumbnail;        // URL ya resuelta en el servicio (miniatura ID -> URL)
-  final int? duration;            // meta['duracion'] en minutos
-  final String? episodeNumber;    // meta['numero-de-episodio']
-  final String? video;            // meta['video'] (YouTube)
+  final String? excerptHtml; // excerpt.rendered
+  final String? sinopsisHtml; // meta['sinopsis'] (HTML)
+  final String?
+  thumbnail; // URL ya resuelta en el servicio (miniatura ID -> URL)
+  final int? duration; // meta['duracion'] en minutos
+  final String? episodeNumber; // meta['numero-de-episodio']
+  final String? video; // meta['video'] (YouTube)
   final List<PodcastGuest> guests;
   final List<PodcastSegment> segments;
   final List<PodcastLink> links;
@@ -68,21 +68,29 @@ class PodcastItem {
   }
 
   /// Parser genérico desde WP (detalle o lista)
-  factory PodcastItem.fromWp(Map<String, dynamic> json,
-      {String? resolvedThumbnailUrl,
-       List<PodcastGuest>? guests,
-       List<PodcastSegment>? segments,
-       List<PodcastLink>? links}) {
-    final id = json['id'] is int ? json['id'] as int : int.tryParse('${json['id']}') ?? -1;
+  factory PodcastItem.fromWp(
+    Map<String, dynamic> json, {
+    String? resolvedThumbnailUrl,
+    List<PodcastGuest>? guests,
+    List<PodcastSegment>? segments,
+    List<PodcastLink>? links,
+  }) {
+    final id = json['id'] is int
+        ? json['id'] as int
+        : int.tryParse('${json['id']}') ?? -1;
     final title = (json['title']?['rendered'] ?? '').toString();
     final excerpt = (json['excerpt']?['rendered'] ?? '').toString();
 
     // Muchos custom fields vienen bajo 'meta' en tu API
-    final meta = (json['meta'] is Map<String, dynamic>) ? (json['meta'] as Map<String, dynamic>) : json;
+    final meta = (json['meta'] is Map<String, dynamic>)
+        ? (json['meta'] as Map<String, dynamic>)
+        : json;
 
     final sinopsis = (meta['sinopsis'] ?? json['sinopsis'] ?? '').toString();
     final duracionStr = (meta['duracion'] ?? json['duracion'] ?? '').toString();
-    final numeroEpisodio = (meta['numero-de-episodio'] ?? json['numero-de-episodio'] ?? '').toString();
+    final numeroEpisodio =
+        (meta['numero-de-episodio'] ?? json['numero-de-episodio'] ?? '')
+            .toString();
     final video = (meta['video'] ?? json['video'] ?? '').toString();
 
     int? duracion;
@@ -96,13 +104,45 @@ class PodcastItem {
       raw: Map<String, dynamic>.from(json),
       excerptHtml: excerpt,
       sinopsisHtml: sinopsis,
-      thumbnail: resolvedThumbnailUrl, // el servicio nos pasa la URL ya resuelta
+      thumbnail:
+          resolvedThumbnailUrl, // el servicio nos pasa la URL ya resuelta
       duration: duracion,
       episodeNumber: numeroEpisodio.isEmpty ? null : numeroEpisodio,
       video: video.isEmpty ? null : video,
       guests: guests ?? const [],
       segments: segments ?? const [],
       links: links ?? const [],
+    );
+  }
+
+  Map<String, dynamic> toCacheMap() => {
+    'raw': raw,
+    'thumbnail': thumbnail,
+    'guests': guests.map((g) => g.toCacheMap()).toList(),
+    'segments': segments.map((s) => s.toCacheMap()).toList(),
+    'links': links.map((l) => l.toCacheMap()).toList(),
+  };
+
+  factory PodcastItem.fromCache(Map<String, dynamic> cache) {
+    final raw = Map<String, dynamic>.from(cache['raw'] as Map? ?? const {});
+    final guests = (cache['guests'] as List<dynamic>? ?? const [])
+        .map((g) => PodcastGuest.fromCache(Map<String, dynamic>.from(g as Map)))
+        .toList();
+    final segments = (cache['segments'] as List<dynamic>? ?? const [])
+        .map(
+          (s) => PodcastSegment.fromCache(Map<String, dynamic>.from(s as Map)),
+        )
+        .toList();
+    final links = (cache['links'] as List<dynamic>? ?? const [])
+        .map((l) => PodcastLink.fromCache(Map<String, dynamic>.from(l as Map)))
+        .toList();
+
+    return PodcastItem.fromWp(
+      raw,
+      resolvedThumbnailUrl: cache['thumbnail'] as String?,
+      guests: guests,
+      segments: segments,
+      links: links,
     );
   }
 }
@@ -128,8 +168,13 @@ class PodcastGuest {
     this.web,
   });
 
-  factory PodcastGuest.fromWp(Map<String, dynamic> json, {String? resolvedAvatar}) {
-    final id = json['id'] is int ? json['id'] as int : int.tryParse('${json['id']}') ?? -1;
+  factory PodcastGuest.fromWp(
+    Map<String, dynamic> json, {
+    String? resolvedAvatar,
+  }) {
+    final id = json['id'] is int
+        ? json['id'] as int
+        : int.tryParse('${json['id']}') ?? -1;
     final name = (json['title']?['rendered'] ?? '').toString();
     final bio = (json['bio_invitado'] ?? '').toString();
 
@@ -152,6 +197,17 @@ class PodcastGuest {
       web: pick('web') ?? pick('web-'),
     );
   }
+
+  Map<String, dynamic> toCacheMap() => {'raw': raw, 'avatarUrl': avatarUrl};
+
+  factory PodcastGuest.fromCache(Map<String, dynamic> cache) {
+    final raw = Map<String, dynamic>.from(cache['raw'] as Map? ?? const {});
+    final guest = PodcastGuest.fromWp(
+      raw,
+      resolvedAvatar: cache['avatarUrl'] as String?,
+    );
+    return guest;
+  }
 }
 
 class PodcastSegment {
@@ -159,6 +215,14 @@ class PodcastSegment {
   final String title;
 
   PodcastSegment({this.time, required this.title});
+
+  Map<String, dynamic> toCacheMap() => {'time': time, 'title': title};
+
+  factory PodcastSegment.fromCache(Map<String, dynamic> cache) =>
+      PodcastSegment(
+        time: cache['time'] as String?,
+        title: (cache['title'] ?? '') as String,
+      );
 }
 
 class PodcastLink {
@@ -166,4 +230,11 @@ class PodcastLink {
   final String? title;
 
   PodcastLink({required this.url, this.title});
+
+  Map<String, dynamic> toCacheMap() => {'url': url, 'title': title};
+
+  factory PodcastLink.fromCache(Map<String, dynamic> cache) => PodcastLink(
+    url: (cache['url'] ?? '') as String,
+    title: cache['title'] as String?,
+  );
 }

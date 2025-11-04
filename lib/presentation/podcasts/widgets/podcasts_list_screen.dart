@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'package:signolia_app/widgets/center_logo_app_bar.dart';
 import '../../../features/podcasts/podcast_model.dart';
-import '../../../features/podcasts/podcast_service.dart';
+import '../../../features/podcasts/podcast_repository.dart';
 import 'podcast_card.dart';
 
 class PodcastsListScreen extends StatefulWidget {
@@ -14,42 +14,79 @@ class PodcastsListScreen extends StatefulWidget {
 }
 
 class _PodcastsListScreenState extends State<PodcastsListScreen> {
-  final _service = PodcastService();
+  late final PodcastRepository _repository = PodcastRepository();
 
   final _items = <PodcastItem>[];
   int _page = 1;
-  final int _perPage = 8; // ágil
+  final int _perPage = 8; // agil
   bool _loading = false;
   bool _hasMore = true;
+  bool _bootstrapped = false;
 
   @override
   void initState() {
     super.initState();
-    _load(refresh: true);
+    _primeFromCache();
   }
 
-  Future<void> _load({bool refresh = false}) async {
-    if (_loading) return;
+  Future<void> _primeFromCache() async {
+    final cached = await _repository.getCachedPage(1);
+    if (!mounted) return;
+
+    if (cached != null && cached.isNotEmpty) {
+      setState(() {
+        _items
+          ..clear()
+          ..addAll(cached);
+        _hasMore = cached.length == _perPage;
+        _page = 2;
+      });
+    }
+
+    _bootstrapped = true;
+    await _load(
+      refresh: true,
+      keepExisting: cached != null && cached.isNotEmpty,
+    );
+  }
+
+  Future<void> _load({bool refresh = false, bool keepExisting = false}) async {
+    if (_loading || (!_bootstrapped && !refresh)) return;
     setState(() => _loading = true);
 
     try {
       if (refresh) {
         _page = 1;
-        _items.clear();
+        if (!keepExisting) {
+          _items.clear();
+        }
         _hasMore = true;
       }
 
-      final pageItems = await _service.fetchList(page: _page, perPage: _perPage);
-      if (pageItems.isEmpty || pageItems.length < _perPage) {
-        _hasMore = false;
+      final pageItems = await _repository.fetchPage(
+        _page,
+        perPage: _perPage,
+        forceRefresh: refresh,
+      );
+
+      if (refresh) {
+        _items
+          ..clear()
+          ..addAll(pageItems);
+        _page = 2;
+        _hasMore = pageItems.length == _perPage;
+      } else {
+        if (pageItems.isEmpty || pageItems.length < _perPage) {
+          _hasMore = false;
+        }
+        _items.addAll(pageItems);
+        _page++;
       }
-      _items.addAll(pageItems);
-      _page++;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error cargando podcasts: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error cargando podcasts: $e')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -58,7 +95,7 @@ class _PodcastsListScreenState extends State<PodcastsListScreen> {
 
   Future<void> _onRefresh() async {
     HapticFeedback.selectionClick();
-    await _load(refresh: true);
+    await _load(refresh: true, keepExisting: true);
   }
 
   bool _onScrollNotification(ScrollNotification n) {
@@ -71,8 +108,6 @@ class _PodcastsListScreenState extends State<PodcastsListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-
     return Scaffold(
       appBar: const CenterLogoAppBar(showBack: true),
       body: RefreshIndicator(
@@ -84,7 +119,6 @@ class _PodcastsListScreenState extends State<PodcastsListScreen> {
             itemCount: _items.length + (_loading || _hasMore ? 1 : 0),
             separatorBuilder: (_, __) => const SizedBox(height: 14),
             itemBuilder: (context, index) {
-              // Loader final mientras paginamos
               if (index >= _items.length) {
                 return const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
@@ -92,9 +126,7 @@ class _PodcastsListScreenState extends State<PodcastsListScreen> {
                 );
               }
 
-              final p = _items[index];
-              // La card se encarga de navegar al detalle
-              return PodcastCard(item: p);
+              return PodcastCard(item: _items[index]);
             },
           ),
         ),
