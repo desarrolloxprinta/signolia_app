@@ -1,12 +1,10 @@
 // lib/presentation/noticias/widgets/noticias_list_screen.dart
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
-import '../../../core/env.dart';
+import '../../../features/noticias/noticias_repository.dart';
 import 'noticia_detail_screen.dart'; // -> NoticiasDetailScreenV2
- // ajusta el import real
+// ajusta el import real
 
 class NoticiasListScreenV2 extends StatefulWidget {
   const NoticiasListScreenV2({super.key});
@@ -16,71 +14,96 @@ class NoticiasListScreenV2 extends StatefulWidget {
 }
 
 class _NoticiasListScreenV2State extends State<NoticiasListScreenV2> {
-  final _items = <Map<String, dynamic>>[];
+  final NoticiasRepository _repository = NoticiasRepository();
+  final List<Map<String, dynamic>> _items = <Map<String, dynamic>>[];
   bool _loading = false;
   bool _error = false;
   int _page = 1;
   int _totalPages = 1;
+  bool _bootstrapped = false;
 
   @override
   void initState() {
     super.initState();
-    if (kDebugMode) debugPrint('📰 [V2] init NoticiasListScreenV2');
-    _fetch(refresh: true);
+    if (kDebugMode) debugPrint('[Noticias] init list');
+    _primeFromCache();
   }
 
-  Future<void> _fetch({bool refresh = false}) async {
-    if (_loading) return;
+  Future<void> _primeFromCache() async {
+    final cached = await _repository.getCachedFirstPage();
+    if (!mounted) return;
+
+    if (cached != null && cached.items.isNotEmpty) {
+      setState(() {
+        _items
+          ..clear()
+          ..addAll(cached.items);
+        _totalPages = cached.totalPages;
+        _page = 2;
+      });
+    }
+
+    _bootstrapped = true;
+    await _load(
+      refresh: true,
+      keepExisting: cached != null && cached.items.isNotEmpty,
+    );
+  }
+
+  Future<void> _load({bool refresh = false, bool keepExisting = false}) async {
+    if (_loading || (!_bootstrapped && !refresh)) return;
     setState(() {
       _loading = true;
       if (refresh) {
         _error = false;
         _page = 1;
-        _items.clear();
+        if (!keepExisting) {
+          _items.clear();
+        }
       }
     });
 
     try {
-      final base = Env.cptNoticias;
-      final hasQuery = base.contains('?');
-      final url = '$base${hasQuery ? '&' : '?'}_embed=1&status=publish&per_page=10&page=$_page';
+      final targetPage = refresh ? 1 : _page;
+      final pageData = await _repository.fetchPage(
+        targetPage,
+        perPage: 10,
+        forceRefresh: refresh,
+      );
 
-      if (kDebugMode) debugPrint('📥 GET noticias: $url');
-      final res = await http.get(Uri.parse(url));
-      // páginas totales (header WP)
-      final tp = res.headers['x-wp-totalpages'] ??
-          res.headers['X-WP-TotalPages'] ??
-          res.headers['x-wp-total-pages'];
-      _totalPages = int.tryParse(tp ?? '') ?? _totalPages;
-
-      if (res.statusCode == 200) {
-        final data = json.decode(res.body);
-        if (data is List) {
-          _items.addAll(
-            data.map((e) => Map<String, dynamic>.from(e as Map)),
-          );
-          _page++;
-        } else {
-          _error = true;
-        }
-      } else if (res.statusCode == 400 || res.statusCode == 404) {
-        // sin más páginas
+      if (refresh) {
+        _items
+          ..clear()
+          ..addAll(pageData.items);
+        _page = 2;
       } else {
-        throw Exception('HTTP ${res.statusCode}');
+        _items.addAll(pageData.items);
+        _page++;
       }
+      _totalPages = pageData.totalPages;
     } catch (e) {
-      if (kDebugMode) debugPrint('❌ Error noticias: $e');
+      if (kDebugMode) debugPrint('[Noticias] error: $e');
       _error = true;
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      } else {
+        _loading = false;
+      }
     }
+  }
+
+  Future<void> _onRefresh() async {
+    await _load(refresh: true, keepExisting: true);
   }
 
   bool get _canLoadMore => _page <= _totalPages;
 
   // helpers
-  String _plain(String? html) =>
-      (html ?? '').replaceAll(RegExp(r'<[^>]*>'), '').replaceAll('&nbsp;', ' ').trim();
+  String _plain(String? html) => (html ?? '')
+      .replaceAll(RegExp(r'<[^>]*>'), '')
+      .replaceAll('&nbsp;', ' ')
+      .trim();
 
   String? _image(Map<String, dynamic> item) {
     try {
@@ -95,12 +118,11 @@ class _NoticiasListScreenV2State extends State<NoticiasListScreenV2> {
 
   @override
   Widget build(BuildContext context) {
-    if (kDebugMode) debugPrint('📰 [V2] build NoticiasListScreenV2');
+    if (kDebugMode) debugPrint('[Noticias] build list');
 
     return Scaffold(
-      
       body: RefreshIndicator(
-        onRefresh: () => _fetch(refresh: true),
+        onRefresh: _onRefresh,
         child: _error
             ? ListView(
                 children: [
@@ -109,84 +131,81 @@ class _NoticiasListScreenV2State extends State<NoticiasListScreenV2> {
                   const SizedBox(height: 12),
                   Center(
                     child: OutlinedButton(
-                      onPressed: () => _fetch(refresh: true),
+                      onPressed: () => _load(refresh: true),
                       child: const Text('Reintentar'),
                     ),
                   ),
                 ],
               )
             : (_items.isEmpty && _loading)
-                ? const Center(child: CircularProgressIndicator())
-                : (_items.isEmpty)
-                    ? ListView(
-                        children: const [
-                          SizedBox(height: 120),
-                          Center(child: Text('No hay noticias por ahora')),
-                        ],
-                      )
-                    : NotificationListener<ScrollNotification>(
-                        onNotification: (sn) {
-                          if (!_loading &&
-                              _canLoadMore &&
-                              sn.metrics.pixels >=
-                                  sn.metrics.maxScrollExtent - 300) {
-                            _fetch();
-                          }
-                          return false;
-                        },
-                        child: ListView.builder(
+            ? const Center(child: CircularProgressIndicator())
+            : (_items.isEmpty)
+            ? ListView(
+                children: const [
+                  SizedBox(height: 120),
+                  Center(child: Text('No hay noticias por ahora')),
+                ],
+              )
+            : NotificationListener<ScrollNotification>(
+                onNotification: (sn) {
+                  if (!_loading &&
+                      _canLoadMore &&
+                      sn.metrics.pixels >= sn.metrics.maxScrollExtent - 300) {
+                    _load();
+                  }
+                  return false;
+                },
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: _items.length + 1,
+                  itemBuilder: (_, i) {
+                    if (i == _items.length) {
+                      if (_loading) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      } else if (_canLoadMore) {
+                        return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 8),
-                          itemCount: _items.length + 1,
-                          itemBuilder: (_, i) {
-                            if (i == _items.length) {
-                              if (_loading) {
-                                return const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 16),
-                                  child:
-                                      Center(child: CircularProgressIndicator()),
-                                );
-                              } else if (_canLoadMore) {
-                                return Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 8),
-                                  child: Center(
-                                    child: OutlinedButton(
-                                      onPressed: _fetch,
-                                      child: const Text('Cargar más'),
-                                    ),
-                                  ),
-                                );
-                              } else {
-                                return const SizedBox.shrink();
-                              }
-                            }
+                          child: Center(
+                            child: OutlinedButton(
+                              onPressed: () => _load(),
+                              child: const Text('Cargar m??s'),
+                            ),
+                          ),
+                        );
+                      } else {
+                        return const SizedBox.shrink();
+                      }
+                    }
 
-                            final it = _items[i];
-                            final title =
-                                _plain(it['title']?['rendered'] as String?);
-                            final excerpt = _plain(
-                                  (it['descripcion'] as String?) ??
-                                  (it['excerpt']?['rendered'] as String?) ??
-                                  (it['content']?['rendered'] as String?),
-                                ) ??
-                                '';
-                            final img = _image(it);
-                            final id = (it['id'] as int?) ?? 0;
+                    final it = _items[i];
+                    final title = _plain(it['title']?['rendered'] as String?);
+                    final excerpt =
+                        _plain(
+                          (it['descripcion'] as String?) ??
+                              (it['excerpt']?['rendered'] as String?) ??
+                              (it['content']?['rendered'] as String?),
+                        ) ??
+                        '';
+                    final img = _image(it);
+                    final id = (it['id'] as int?) ?? 0;
 
-                            return _NoticiaTile(
-                              title: title,
-                              excerpt: excerpt,
-                              imageUrl: img,
-                              onTap: () {
-                                if (kDebugMode) {
-                                  debugPrint('🟢 push detalle V2 id=$id');
-                                }
-                                NoticiasDetailScreenV2.push(context, id: id);
-                              },
-                            );
-                          },
-                        ),
-                      ),
+                    return _NoticiaTile(
+                      title: title,
+                      excerpt: excerpt,
+                      imageUrl: img,
+                      onTap: () {
+                        if (kDebugMode) {
+                          debugPrint('[Noticias] push detalle id=$id');
+                        }
+                        NoticiasDetailScreenV2.push(context, id: id);
+                      },
+                    );
+                  },
+                ),
+              ),
       ),
     );
   }
@@ -252,8 +271,10 @@ class _NoticiaTile extends StatelessWidget {
                 children: [
                   // Chip NOTICIA
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: .06),
                       borderRadius: BorderRadius.circular(999),
@@ -272,8 +293,7 @@ class _NoticiaTile extends StatelessWidget {
                     title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style:
-                        t.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                    style: t.titleMedium?.copyWith(fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 6),
                   if (excerpt.isNotEmpty)
