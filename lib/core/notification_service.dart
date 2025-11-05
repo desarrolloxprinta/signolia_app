@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:signolia_app/firebase_options.dart';
 
 // Pantallas reales de tu app
 import 'package:signolia_app/presentation/noticias/widgets/noticia_detail_screen.dart';
@@ -24,7 +25,9 @@ const AndroidNotificationChannel kSignoliaChannel = AndroidNotificationChannel(
 // Handler BG (top-level)
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 }
 
 class NotificationService {
