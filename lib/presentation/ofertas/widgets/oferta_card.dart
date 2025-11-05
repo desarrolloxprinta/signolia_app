@@ -50,26 +50,26 @@ class OfertaCard extends StatelessWidget {
 
     final map = <String, dynamic>{
       'id': o.id,
-      'link': linkPublico ?? '',
+      'link': linkPublico,
 
       'title': {
         'rendered': title,
       },
       'excerpt': {
-        'rendered': excerpt ?? '',
+        'rendered': excerpt,
       },
 
       'meta': {
-        'descripcion_oferta'   : descripcion ?? '',
+        'descripcion_oferta'   : descripcion,
         'fecha_inicio_oferta'  : fechaIniEpoch,
         'fecha_fin_oferta'     : fechaFinEpoch,
-        'nombre_empresa_oferta': nombreEmpresa ?? '',
-        'direccion_de_la_empresa': direccion ?? '',
-        'email_empresa_oferta' : email ?? '',
-        'telefono_empresa_oferta': telefono ?? '',
-        'web_oferta_empresa'   : webEmpresa ?? '',
-        'descuento_oferta'     : descuento ?? '',
-        'link_oferta'          : linkOfertaExt ?? '',
+        'nombre_empresa_oferta': nombreEmpresa,
+        'direccion_de_la_empresa': direccion,
+        'email_empresa_oferta' : email,
+        'telefono_empresa_oferta': telefono,
+        'web_oferta_empresa'   : webEmpresa,
+        'descuento_oferta'     : descuento,
+        'link_oferta'          : linkOfertaExt,
       },
     };
 

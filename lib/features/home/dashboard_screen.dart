@@ -27,39 +27,6 @@ import '../pro/signolia_pro_screen.dart';
 // Endpoints (Env.cptNoticias, Env.cptEventos, Env.cptOfertas, Env.cptPodcasts)
 import '../../core/env.dart';
 
-Map<String, dynamic> _ofertaAdapterToWpMap(final dynamic a) {
-  // `a` es tu _OfertaAdapter (ajusta nombres si alguno difiere)
-  return {
-    'title': {'rendered': (a.titulo ?? a.title ?? '').toString()},
-    // permalink público de Signolia → el que contiene el formulario (elementor/jetengine)
-    'link': (a.link ?? a.linkPublico ?? '').toString(),
-
-    'excerpt': {'rendered': (a.excerptHtml ?? a.excerpt ?? '').toString()},
-
-    'meta': {
-      'descripcion_oferta':
-          (a.descripcionOferta ?? a.descripcionHtml ?? a.descripcion ?? '')
-              .toString(),
-      'fecha_inicio_oferta': a.fechaInicioEpoch ?? 0,
-      'fecha_fin_oferta': a.fechaFinEpoch ?? 0,
-      'nombre_empresa_oferta': (a.nombreEmpresa ?? '').toString(),
-      'direccion_de_la_empresa': (a.direccion ?? '').toString(),
-      'email_empresa_oferta': (a.email ?? '').toString(),
-      'telefono_empresa_oferta': (a.telefono ?? '').toString(),
-      'web_oferta_empresa': (a.web ?? a.webEmpresa ?? '').toString(),
-      'descuento_oferta': (a.descuento ?? '').toString(),
-      // web externa de la promo (si existe)
-      'link_oferta': (a.linkOferta ?? '').toString(),
-    },
-
-    '_embedded': {
-      'author': [
-        {'name': (a.autorNombre ?? '').toString()},
-      ],
-    },
-  };
-}
-
 class BrandImages {
   static const podcast = 'assets/images/story/podcast.png';
   static const empleo = 'assets/images/story/empleo.png';
@@ -687,11 +654,7 @@ class _DashboardScreenState extends State<DashboardScreen> with RouteAware {
         break;
 
       case LatestType.oferta:
-        final Map<String, dynamic> post =
-            // ignore: dead_code, unnecessary_type_check
-            (item.raw is Map<String, dynamic>)
-            ? item.raw
-            : Map<String, dynamic>.from(item.raw as Map);
+        final post = item.raw;
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => OfertaDetailScreen.fromWp(post: post),
@@ -1077,44 +1040,6 @@ class _EventoAdapter {
   String? get instagram => _post['instagram']?.toString();
   String? get twitter => _post['twitter']?.toString();
   String? get youtube => _post['youtube']?.toString();
-}
-
-class _OfertaAdapter {
-  final Map<String, dynamic> _post;
-  _OfertaAdapter._(this._post);
-  factory _OfertaAdapter.fromWp(Map<String, dynamic> post) {
-    return _OfertaAdapter._(Map<String, dynamic>.from(post));
-  }
-  String? _embeddedImage() {
-    try {
-      return _post['_embedded']?['wp:featuredmedia']?[0]?['source_url']
-          ?.toString();
-    } catch (_) {
-      return null;
-    }
-  }
-
-  String get titulo => (_post['title']?['rendered'] ?? '').toString();
-  String get descripcionHtml =>
-      (_post['descripcion_oferta'] ??
-              _post['informacion_basica'] ??
-              _post['content']?['rendered'] ??
-              _post['excerpt']?['rendered'] ??
-              '')
-          .toString();
-  String? get imagenDestacada => _embeddedImage();
-  String? get empresa => _post['nombre_empresa_oferta']?.toString();
-  String? get direccion => _post['direccion_de_la_empresa']?.toString();
-  String? get email => _post['email_empresa_oferta']?.toString();
-  String? get telefono => _post['telefono_empresa_oferta']?.toString();
-  String? get web => _post['web_oferta_empresa']?.toString();
-  String? get fechaPublicacion =>
-      _epochToIsoStr(_post['fecha_inicio_oferta']) ?? _post['date']?.toString();
-  String? get fechaCierre => _epochToIsoStr(_post['fecha_fin_oferta']);
-  String? get ubicacion => _post['direccion_de_la_empresa']?.toString();
-  String? get descuento => _post['descuento_oferta']?.toString();
-  String? get linkOferta => _post['link_oferta']?.toString();
-  String get estaActiva => 'true';
 }
 
 class _StoryTile extends StatelessWidget {

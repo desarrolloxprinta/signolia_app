@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 // <-- AppBar con logo centrado y fondo negro
 import 'package:signolia_app/widgets/center_logo_app_bar.dart';
@@ -29,7 +28,6 @@ class NoticiasDetailScreenV2 extends StatefulWidget {
 
 class _NoticiasDetailScreenV2State extends State<NoticiasDetailScreenV2> {
   late Future<_NoticiaDetail> _future;
-  Map<String, dynamic>? _raw;
 
   @override
   void initState() {
@@ -45,7 +43,6 @@ class _NoticiasDetailScreenV2State extends State<NoticiasDetailScreenV2> {
       throw Exception('No se pudo cargar la noticia (status ${res.statusCode})');
     }
     final map = json.decode(res.body) as Map<String, dynamic>;
-    _raw = map;
 
     final detail = _NoticiaDetail.fromJson(map);
 
@@ -307,12 +304,7 @@ class _NoticiasDetailScreenV2State extends State<NoticiasDetailScreenV2> {
     );
   }
 
-  Future<void> _open(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
+
 }
 
 /// =================== MODELO ===================
