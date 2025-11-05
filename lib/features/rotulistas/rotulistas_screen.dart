@@ -11,7 +11,6 @@ class RotulistasScreen extends StatefulWidget {
 
 class _RotulistasScreenState extends State<RotulistasScreen> {
   late final WebViewController _controller;
-  double _progress = 0;
 
   static const _iframeHtml = '''
 <!DOCTYPE html>
@@ -42,7 +41,7 @@ class _RotulistasScreenState extends State<RotulistasScreen> {
       ..setBackgroundColor(const Color(0xFFFFFFFF))
       ..setNavigationDelegate(
         NavigationDelegate(
-          onProgress: (p) => setState(() => _progress = p / 100),
+          onProgress: (_) {},
           onWebResourceError: (error) {
             debugPrint('WebView error: $error');
           },

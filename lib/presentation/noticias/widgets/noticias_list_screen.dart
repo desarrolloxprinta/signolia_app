@@ -182,13 +182,11 @@ class _NoticiasListScreenV2State extends State<NoticiasListScreenV2> {
 
                     final it = _items[i];
                     final title = _plain(it['title']?['rendered'] as String?);
-                    final excerpt =
-                        _plain(
-                          (it['descripcion'] as String?) ??
-                              (it['excerpt']?['rendered'] as String?) ??
-                              (it['content']?['rendered'] as String?),
-                        ) ??
-                        '';
+                    final excerpt = _plain(
+                      (it['descripcion'] as String?) ??
+                          (it['excerpt']?['rendered'] as String?) ??
+                          (it['content']?['rendered'] as String?),
+                    );
                     final img = _image(it);
                     final id = (it['id'] as int?) ?? 0;
 
